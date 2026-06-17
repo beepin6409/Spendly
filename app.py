@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash
-from database.db import init_db, email_exists, create_user
+from database.db import init_db, seed_db, email_exists, create_user
 
 app = Flask(__name__)
 app.secret_key = "spendly-secret-key"
 
-init_db()
+with app.app_context():
+    init_db()
+    seed_db()
 
 
 # ------------------------------------------------------------------ #
