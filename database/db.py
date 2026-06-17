@@ -1,4 +1,6 @@
 import sqlite3
+from datetime import date, timedelta
+import random
 
 DB_PATH = "spendly.db"
 
@@ -52,3 +54,41 @@ def create_user(name, email, password_hash):
     conn.commit()
     conn.close()
     return user_id
+
+
+def seed_db():
+    from werkzeug.security import generate_password_hash
+
+    conn = get_db()
+
+    if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+        conn.close()
+        return
+
+    cur = conn.execute(
+        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+        ("Demo User", "demo@spendly.com", generate_password_hash("demo123")),
+    )
+    demo_id = cur.lastrowid
+
+    today = date.today()
+    sample_expenses = [
+        ("Food",          120.0,  "Lunch at canteen"),
+        ("Transport",     45.0,   "Auto rickshaw to office"),
+        ("Bills",         850.0,  "Electricity bill"),
+        ("Health",        300.0,  "Pharmacy — vitamins"),
+        ("Entertainment", 250.0,  "Movie ticket"),
+        ("Shopping",      1200.0, "New shirt from Myntra"),
+        ("Other",         75.0,   "Stationery"),
+        ("Food",          90.0,   "Dinner — Zomato order"),
+    ]
+
+    for i, (category, amount, description) in enumerate(sample_expenses):
+        expense_date = (today - timedelta(days=i * 3)).strftime("%Y-%m-%d")
+        conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (demo_id, amount, category, expense_date, description),
+        )
+
+    conn.commit()
+    conn.close()
