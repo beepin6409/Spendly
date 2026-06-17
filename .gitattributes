@@ -1,0 +1,2 @@
+spendly.db-shm merge=ours
+spendly.db-wal merge=ours
