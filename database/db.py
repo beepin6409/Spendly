@@ -1,9 +1,6 @@
-import os
 import sqlite3
 
-from werkzeug.security import generate_password_hash
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "spendly.db")
+DB_PATH = "spendly.db"
 
 
 def get_db():
@@ -15,60 +12,43 @@ def get_db():
 
 def init_db():
     conn = get_db()
-    conn.execute("""
+    conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT    NOT NULL,
-            email         TEXT    UNIQUE NOT NULL,
-            password_hash TEXT    NOT NULL,
-            created_at    TEXT    DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("""
+            name          TEXT NOT NULL,
+            email         TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at    TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS expenses (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL REFERENCES users(id),
-            amount      REAL    NOT NULL,
-            category    TEXT    NOT NULL,
-            date        TEXT    NOT NULL,
+            amount      REAL NOT NULL,
+            category    TEXT NOT NULL,
+            date        TEXT NOT NULL,
             description TEXT,
-            created_at  TEXT    DEFAULT (datetime('now'))
-        )
+            created_at  TEXT DEFAULT (datetime('now'))
+        );
     """)
     conn.commit()
     conn.close()
 
 
-def seed_db():
+def email_exists(email):
     conn = get_db()
-    cursor = conn.cursor()
+    row = conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone()
+    conn.close()
+    return row is not None
 
-    row = cursor.execute("SELECT COUNT(*) FROM users").fetchone()
-    if row[0] > 0:
-        conn.close()
-        return
 
-    cursor.execute(
+def create_user(name, email, password_hash):
+    conn = get_db()
+    cur = conn.execute(
         "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        ("Demo User", "demo@spendly.com", generate_password_hash("demo123")),
+        (name, email, password_hash),
     )
-    user_id = cursor.lastrowid
-
-    sample_expenses = [
-        (user_id, 320.00,  "Food",          "2026-06-01", "Groceries from supermarket"),
-        (user_id, 150.00,  "Transport",     "2026-06-03", "Metro card recharge"),
-        (user_id, 1200.00, "Bills",         "2026-06-05", "Electricity bill"),
-        (user_id, 450.00,  "Health",        "2026-06-08", "Pharmacy — vitamins"),
-        (user_id, 600.00,  "Entertainment", "2026-06-10", "Movie tickets"),
-        (user_id, 2200.00, "Shopping",      "2026-06-12", "New shoes"),
-        (user_id, 85.00,   "Other",         "2026-06-14", "Newspaper subscription"),
-        (user_id, 540.00,  "Food",          "2026-06-16", "Restaurant dinner"),
-    ]
-
-    cursor.executemany(
-        "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
-        sample_expenses,
-    )
-
+    user_id = cur.lastrowid
     conn.commit()
     conn.close()
+    return user_id
