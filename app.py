@@ -1,6 +1,19 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.security import generate_password_hash
+from database.db import init_db, seed_db, email_exists, create_user
+
+from database.db import get_db, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = "spendly-secret-key"
+
+with app.app_context():
+    init_db()
+    seed_db()
+
+with app.app_context():
+    init_db()
+    seed_db()
 
 
 # ------------------------------------------------------------------ #
@@ -12,9 +25,33 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    return render_template("register.html")
+    if request.method == "GET":
+        if session.get("user_id"):
+            return redirect(url_for("landing"))
+        return render_template("register.html")
+
+    name     = request.form.get("name", "").strip()
+    email    = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+
+    if not name or not email or not password:
+        return render_template("register.html", error="All fields are required")
+
+    if len(password) < 8:
+        return render_template("register.html", error="Password must be at least 8 characters")
+
+    if email_exists(email):
+        return render_template("register.html", error="Email already registered")
+
+    password_hash = generate_password_hash(password)
+    user_id = create_user(name, email, password_hash)
+
+    session["user_id"]   = user_id
+    session["user_name"] = name
+
+    return redirect(url_for("landing"))
 
 
 @app.route("/login")
